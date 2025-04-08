@@ -24,7 +24,7 @@ Google Keep allows exporting notes as HTML files. Joplin can import notes from M
 
 ## Installation
 
-1.  **Clone or Download:** Get the script file (`keep_converter.py` or your chosen name) from this repository.
+1.  **Clone or Download:** Get the script file (`convert_keep_to_markdown.py` or your chosen name) from this repository.
 2.  **Install Dependencies:** Open your terminal or command prompt and run:
     ```bash
     pip install beautifulsoup4 markdownify
@@ -35,9 +35,9 @@ Google Keep allows exporting notes as HTML files. Joplin can import notes from M
 1.  **Export from Google Keep:** Go to [Google Takeout](https://takeout.google.com/) and export your Google Keep notes. Make sure to select HTML format. Download and unzip the export file.
 2.  **Run the Script:** Open your terminal or command prompt, navigate to the directory where you saved the script, and run it:
     ```bash
-    python keep_converter.py
+    python convert_keep_to_markdown.py
     ```
-    (Replace `keep_converter.py` with the actual filename if you renamed it).
+    (Replace `convert_keep_to_markdown.py` with the actual filename if you renamed it).
 3.  **Select Folder:** A file dialog window will appear. Navigate to and select the folder containing the `.html` files you extracted from the Google Takeout zip file (usually a folder named `Keep`).
 4.  **Conversion:** The script will process the HTML files and create a new subfolder named `converted files` inside the folder you selected. The converted `.md` files will be saved there. Check the terminal output for progress and any potential errors.
 5.  **Import into Joplin:**
