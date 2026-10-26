@@ -168,6 +168,4 @@ Issues, pull requests and feature ideas are very welcome — head over to the [i
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgements
 
-* Thanks to [@michael-nunez-01](https://github.com/michael-nunez-01) for pinpointing the tkinter dependency [`ModuleNotFoundError`](https://github.com/keshavsapra/Google-Keep-to-Joplin/issues/1) and for reporting the [lost modified dates](https://github.com/keshavsapra/Google-Keep-to-Joplin/issues/2) — both are fixed in current versions.
