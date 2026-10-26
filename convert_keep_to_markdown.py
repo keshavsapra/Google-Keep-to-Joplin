@@ -1,6 +1,14 @@
 import os
-import tkinter as tk
-from tkinter import filedialog
+import sys
+import json
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+    TKINTER_AVAILABLE = True
+except ImportError:
+    # tkinter is a system package (e.g. python3-tk on Ubuntu/Debian), not a pip package.
+    # If it's missing, the script can still be used by passing the folder as an argument.
+    TKINTER_AVAILABLE = False
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 import re
@@ -24,6 +32,43 @@ def sanitize_filename(filename):
     if len(sanitized) > max_len:
         sanitized = sanitized[:max_len]
     return sanitized
+
+def get_note_modified_time(html_filepath, md_filepath):
+    """
+    Determines the modification time for the output Markdown file.
+
+    Google Takeout exports a `.json` sidecar file next to each `.html` note.
+    That JSON contains `userEditedTimestampUsec` (microseconds since epoch),
+    which reflects when the note was last edited in Google Keep. If the JSON
+    file is missing or unreadable, we fall back to the HTML file's own
+    modification time.
+
+    Args:
+        html_filepath (str): Path to the source HTML file.
+        md_filepath (str): Path to the newly written Markdown file (fallback source).
+
+    Returns:
+        float: Timestamp in seconds since the epoch.
+    """
+    json_filepath = os.path.splitext(html_filepath)[0] + ".json"
+    try:
+        with open(json_filepath, 'r', encoding='utf-8') as f:
+            metadata = json.load(f)
+        timestamp_usec = metadata.get("userEditedTimestampUsec")
+        if timestamp_usec:
+            return int(timestamp_usec) / 1_000_000.0
+        print(f"  - Warning: 'userEditedTimestampUsec' not found in {os.path.basename(json_filepath)}.")
+    except FileNotFoundError:
+        print(f"  - Warning: No JSON metadata file found for {os.path.basename(html_filepath)}.")
+    except (json.JSONDecodeError, OSError, TypeError, ValueError) as e:
+        print(f"  - Warning: Could not read metadata from {os.path.basename(json_filepath)}: {e}")
+
+    # Fallback: use the modification time of the source HTML file
+    try:
+        return os.path.getmtime(html_filepath)
+    except OSError:
+        return os.path.getmtime(md_filepath)
+
 
 def convert_keep_html_to_md(html_filepath, output_dir_path): # Renamed parameter
     """
@@ -103,6 +148,12 @@ def convert_keep_html_to_md(html_filepath, output_dir_path): # Renamed parameter
         with open(full_md_path, 'w', encoding='utf-8') as f:
             f.write(final_md_content)
 
+        # --- Preserve the note's last-modified date ---
+        # Use the timestamp from the Takeout JSON sidecar so the output file's
+        # "Date modified" matches the original Google Keep note.
+        note_modified_time = get_note_modified_time(html_filepath, full_md_path)
+        os.utime(full_md_path, (note_modified_time, note_modified_time))
+
         print(f"  -> Successfully converted to: {md_filename} in 'converted files'")
 
     except FileNotFoundError:
@@ -119,18 +170,41 @@ def convert_keep_html_to_md(html_filepath, output_dir_path): # Renamed parameter
 def main():
     """
     Main function to select folder, create output directory, and process files.
+
+    The input folder can be provided as a command-line argument:
+        python convert_keep_to_markdown.py /path/to/Keep
+
+    If no argument is given, a graphical folder picker is shown (requires tkinter).
     """
-    # --- Set up Tkinter for folder selection ---
-    root = tk.Tk()
-    root.withdraw() # Hide the main Tkinter window
+    input_dir = None
 
-    print("Please select the folder containing your Google Keep HTML files.")
-    # --- Ask user to select the input directory ---
-    input_dir = filedialog.askdirectory(title="Select Google Keep HTML Export Folder")
+    # --- Allow the folder to be passed as a command-line argument ---
+    if len(sys.argv) > 1:
+        input_dir = os.path.abspath(sys.argv[1])
+        if not os.path.isdir(input_dir):
+            print(f"Error: The folder '{input_dir}' does not exist or is not a directory.")
+            return
+    else:
+        # --- Set up Tkinter for folder selection ---
+        if not TKINTER_AVAILABLE:
+            print("Error: tkinter is not available in this Python installation.")
+            print("It is a system package and cannot be installed with pip.")
+            print("On Ubuntu/Debian, install it with: sudo apt install python3-tk")
+            print("On Fedora/RHEL, install it with: sudo dnf install python3-tkinter")
+            print("Alternatively, skip the folder picker by passing the folder path as an argument:")
+            print("    python convert_keep_to_markdown.py /path/to/Keep")
+            return
 
-    if not input_dir:
-        print("No folder selected. Exiting.")
-        return
+        root = tk.Tk()
+        root.withdraw() # Hide the main Tkinter window
+
+        print("Please select the folder containing your Google Keep HTML files.")
+        # --- Ask user to select the input directory ---
+        input_dir = filedialog.askdirectory(title="Select Google Keep HTML Export Folder")
+
+        if not input_dir:
+            print("No folder selected. Exiting.")
+            return
 
     print(f"Selected folder: {input_dir}")
 
